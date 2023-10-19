@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SalesController;
+use App\Models\Inventories;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,21 +24,12 @@ Route::post('/', [LoginController::class, 'authenticate']);
 Route::middleware(['role:superadmin'])->group(function(){
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::resource('/inventory', InventoryController::class);
-    Route::get('/read', [InventoryController::class,'read']);
-
+    Route::get('baca', [InventoryController::class,'read']);
 });
-
-Route::middleware(['role:sales'])->group(function(){
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::resource('/sales', SalesController::class);
-});
-
-Route::middleware(['role:purchase'])->group(function(){
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::get('read', [SalesController::class,'read']);
+    Route::get('stock', [SalesController::class,'stockBarang'])->name('stock');
+    Route::get('select', [InventoryController::class,'select'])->name('select');
     Route::resource('/purchase', PurchaseController::class);
-
-});
-
-// Route::middleware(['role:manager'])->group(function(){
-//     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');\
-// });
+    Route::get('lihat', [PurchaseController::class,'read']);
+    Route::get('/get-inventory', [InventoryController::class,'getInventory']);

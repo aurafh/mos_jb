@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Model;
 class Purchases extends Model
 {
     use HasFactory;
-    protected $tables=['purchases'];
-    protected $fillable=['number','date'];
+    protected $primaryKey = 'id';
+    protected $fillable = [
+        'number',
+        'date',
+        'user_id',
+    ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function purchaseDetails()
+    {
+        return $this->hasMany(PurchaseDetails::class);
+    }
 }

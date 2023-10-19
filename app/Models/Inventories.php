@@ -16,4 +16,13 @@ class Inventories extends Model
         'stock'
     ];
 
+    public function salesDetails()
+    {
+        return $this->hasMany(SalesDetails::class);
+    }
+
+    public function purchaseDetails()
+    {
+        return $this->hasMany(purc::class);
+    }
 }

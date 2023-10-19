@@ -18,7 +18,8 @@ class InventoryController extends Controller
      */
     public function index()
     {
-        return view('inventory.index');
+        $barang=Inventories::all();
+        return view('inventory.index',['barang'=>$barang]);
     }
 
 
@@ -27,6 +28,12 @@ class InventoryController extends Controller
         return view('inventory.read', [
             'inventories' => Inventories::latest()->get()
         ]);
+    }
+
+    public function getInventory()
+    {
+        $getData = Inventories::all();
+        return response()->json($getData);
     }
 
     /**
@@ -45,6 +52,13 @@ class InventoryController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+    public function select(Request $request){
+        $term=$request->input('q');
+        $items=Inventories::where('name','like','%'.$term.'%')->get();
+        return response()->json($items);
+    }
+
+
     public function store(Request $request)
     {
        $request->validate([

@@ -17,26 +17,17 @@ class LoginController extends Controller
 
     public function authenticate(Request $request)
     {
-        // $credentials = $request->only('name','');
-        $request->validate([
-            'name' => 'required',
-        ]);
 
-        $user = User::where('name', $request->input('name'))->first();
+        $name = $request->input('name');
+        $user = User::where('name', $name)->first();
+
         if ($user) {
-        Auth::login($user);
-        if ($user->role == 'superadmin') {
-                return redirect()->intended('/inventory')->with('success', 'Berhasil Login!'); // Arahkan ke dashboard superadmin.
-            } elseif ($user->role == 'sales') {
-                return redirect()->intended('/sales')->with('success', 'Berhasil Login!'); // Arahkan ke dashboard sales.
-            } elseif ($user->role == 'purchase') {
-                return redirect()->intended('/purchase')->with('success', 'Berhasil Login!'); // Arahkan ke dashboard purchase.
-            } elseif ($user->role == 'manager') {
-                return redirect()->intended('')->with('success', 'Berhasil Login!'); // Arahkan ke dashboard purchase.
-            }
-        }   
-        else {
-            return redirect()->back()->with('error', 'Gagal Login!');
+            Auth::login($user);
+
+            return response()->json(['role' => $user->role]);
+        } else {
+            // User not found
+            return response()->json(['role' => 'unknown']);
         }
     }
 
