@@ -18,11 +18,9 @@ class PurchaseController extends Controller
      */
     public function index()
     {
-        $number=Helper::IDGenerator(new Purchases(), 'code', 3, 'KJ');
         $barang=Inventories::all();
         return view('purchase.index',[
             'barang'=>$barang,
-            'number'=>$number
         ]);
     }
 
@@ -53,11 +51,10 @@ class PurchaseController extends Controller
     {
         $params = $request->all();
 
-        // Buat objek pembelian
         $purchase = new Purchases();
-        $purchase->number = $params['number'];
+        $purchase->number = Helper::IDGenerator(new Purchases(), 'code', 3, 'PC');
         $purchase->date = $params['date'];
-        $purchase->user_id = Auth::user()->id; // Anda bisa sesuaikan dengan user yang sedang login
+        $purchase->user_id = Auth::user()->id;
         $purchase->save();
 
         $purchaseDetails = [];
@@ -90,7 +87,7 @@ class PurchaseController extends Controller
         }
     }
 
-        return response()->json(['message' => 'Data pembelian berhasil disimpan']);
+        return response()->json(['message' => 'Data Purchases berhasil disimpan']);
     }
 
     /**
@@ -101,7 +98,22 @@ class PurchaseController extends Controller
      */
     public function show($id)
     {
-        //
+        $purchase=Purchases::find($id);
+        $purchase_details=PurchaseDetails::where('purchase_id',$id)->get();
+        if($purchase_details){
+            $total = 0;
+            $totalPrice = 0;
+            foreach ($purchase_details as $purchase_detail) {
+                $total += $purchase_detail->price * $purchase_detail->qty;
+                $totalPrice+=$total;
+
+            }
+        }
+         return response()->json([
+            'totalPrice'=>$totalPrice,
+            'purchase'=>$purchase,
+            'purchase_details' => $purchase_details
+         ]);
     }
 
     /**
@@ -112,7 +124,15 @@ class PurchaseController extends Controller
      */
     public function edit($id)
     {
-        //
+        $purchase=Purchases::find($id);
+        $purchase_details=PurchaseDetails::where('purchase_id',$id)->get();
+        $inventory=Inventories::all();
+         return response()->json([
+            'purchase'=>$purchase,
+            'purchase_details' => $purchase_details,
+            'inventory' => $inventory,
+            'status'=>'success'
+         ]);
     }
 
     /**
@@ -124,8 +144,61 @@ class PurchaseController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $params = $request->all();
+        $purchase = Purchases::findOrFail($id);
+
+        if (!$purchase) {
+            return response()->json(['message' => 'Purchase tidak ditemukan'], 404);
+        }
+        
+        $purchase_details=PurchaseDetails::where('purchase_id', $id)->get();
+        foreach ($purchase_details as $detail) {
+            $detail->delete();
+        }
+
+        $purchase->number = $params['number'];
+        $purchase->date = $params['date'];
+        $purchase->update();
+        
+        $purchaseDetails = [];
+
+        foreach ($params['id'] as $key => $inventoryId) {
+            $purchaseDetails[] = [
+                'purchase_id' => $id,
+                'inventory_id' => $inventoryId,
+                'qty' => $params['qty'][$key],
+                'price' => $params['price'][$key],
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+
+        PurchaseDetails::insert($purchaseDetails);
+
+        // Perbarui stok barang
+        foreach ($request->id as $key => $id) {
+        $inventoryId = $id;
+        $newQty = $request->qty[$key];
+
+        $purchaseDetail = PurchaseDetails::where('purchase_id', $id)->first();
+
+        if ($purchaseDetail) {
+            $oldQty = $purchaseDetail->qty;
+            $qtyDiff = $newQty - $oldQty;
+            $inventory = Inventories::find($inventoryId);
+
+            if ($inventory) {
+                $newStock = $inventory->stock + $qtyDiff;
+                $newStock = ($newStock < 0) ? 0 : $newStock;
+
+                $inventory->stock = $newStock;
+                $inventory->update();
+            }
+        }
     }
+        return response()->json(['message' => 'Data Purchase berhasil diperbarui']);
+    }
+    
 
     /**
      * Remove the specified resource from storage.
@@ -135,6 +208,27 @@ class PurchaseController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $purchase = Purchases::find($id);
+
+        if (!$purchase) {
+            return redirect('/purchase')->with('error', 'Pembelian tidak ditemukan!');
+        }
+
+        $purchaseDetails = PurchaseDetails::where('purchase_id', $id)->get();
+
+        foreach ($purchaseDetails as $detail) {
+            $inventory = Inventories::find($detail->inventory_id);
+            if ($inventory) {
+                $inventory->stock -= $detail->qty;
+                $inventory->save();
+            }
+
+            $detail->delete();
+        }
+
+        $purchase->delete();
+
+            return response()->json(['message' => 'Pembelian dan item pembelian berhasil dihapus']);
     }
+ 
 }

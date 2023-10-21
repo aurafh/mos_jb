@@ -1,11 +1,10 @@
 <?php
 
-use App\Http\Controllers\InventoryController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SalesController;
-use App\Models\Inventories;
+use App\Http\Controllers\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,8 +27,8 @@ Route::middleware(['role:superadmin'])->group(function(){
 });
     Route::resource('/sales', SalesController::class);
     Route::get('read', [SalesController::class,'read']);
-    Route::get('stock', [SalesController::class,'stockBarang'])->name('stock');
-    Route::get('select', [InventoryController::class,'select'])->name('select');
+
     Route::resource('/purchase', PurchaseController::class);
     Route::get('lihat', [PurchaseController::class,'read']);
     Route::get('/get-inventory', [InventoryController::class,'getInventory']);
+    Route::get('/get-inventoryName/{id}', [InventoryController::class, 'getName']);

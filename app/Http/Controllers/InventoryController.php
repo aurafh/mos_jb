@@ -36,6 +36,16 @@ class InventoryController extends Controller
         return response()->json($getData);
     }
 
+
+    public function getName($id){
+
+        
+        $inventory = Inventories::find($id);
+         return response()->json([
+            'name' => $inventory->name,
+            'stock'=>$inventory->stock
+         ]);
+    }
     /**
      * Show the form for creating a new resource.
      *
@@ -67,16 +77,11 @@ class InventoryController extends Controller
         'stock'=>'required',
        ]);
 
-         $barang_name=$request->input('name');
-         $barang_price=$request->input('price');
-         $barang_stock=$request->input('stock');
-         $barang_code=Helper::IDGenerator(new Inventories, 'code', 3, 'KB');
-
          $new=new Inventories;
-         $new->code = $barang_code;
-         $new->name = $barang_name;
-         $new->price = $barang_price;
-         $new->stock = $barang_stock;
+         $new->code = Helper::IDGenerator(new Inventories, 'code', 3, 'KB');
+         $new->name = $request->input('name');
+         $new->price = $request->input('price');
+         $new->stock =$request->input('stock');
          $save=$new->save();
          
          if($save){

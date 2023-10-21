@@ -3,7 +3,7 @@
     <div class="row mb-3">
         <label for="number" class="col-sm-4 col-form-label"><b>Code</b></label>
         <div class="col-sm-8">
-            <input type="text" class="form-control" id="number" name="number" value="{{ $number }}">
+            <input type="text" class="form-control" id="number" name="number" disabled>
         </div>
     </div>
     <div class="row mb-3">
@@ -24,7 +24,7 @@
                     <th width="15%">Price</th>
                     <th width="15%">Qty</th>
                     <th width="15%">Total</th>
-                    <th width="5%">
+                    <th width="5%" id="addTH">
                         <button class="btn btn-success" type="button" id="btn-add-row">ADD</button>
                     </th>
                     </tr>
@@ -42,6 +42,6 @@
             <input type="number" class="form-control" id="totalPrice" readonly disabled>
         </div>
     </div>
-        <button class="btn btn-primary" type="submit">SAVE</button>
+        <button class="btn btn-primary" type="submit" id="saveBtn">SAVE</button>
 </form>
 

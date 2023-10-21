@@ -25,33 +25,24 @@ class SalesController extends Controller
     
     public function read()
     {
-        $sales=Sales::latest()->get();
-
         return view('sales.read', [
-            'sales' => $sales
+            'sales' => Sales::all()
         ]);
     }
 
-    public function stockBarang(Request $request)
-    {
-        $p = Inventories::select('stock')->where('id',$request->id)->first();       
-        return response()->json($p);
     
-    }
     /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
-    {
-        $number=Helper::IDGenerator(new Sales, 'code', 3, 'KJ');
-        $barang=Inventories::all();
-        return view('sales.create',[
-            'number'=>$number,
-            'barang'=>$barang
-        ]);
-    }
+    // public function create()
+    // {
+    //     $barang=Inventories::all();
+    //     return view('sales.create',[
+    //         'barang'=>$barang
+    //     ]);
+    // }
 
     /**
      * Store a newly created resource in storage.
@@ -61,24 +52,47 @@ class SalesController extends Controller
      */
     public function store(Request $request)
     {
-        $userID=Auth::user()->id;
-        $sale = new Sales();
-        $sale->number = $request->input('number');
-        $sale->date = $request->input('date');
-        $sale->user_id = $userID;
-        $sale->save();
+        $params = $request->all();
 
-    foreach ($request->id as $key => $id) {
-        SalesDetails::create([
-            'sales_id' => $sale->id,
-            'inventory_id' => $id,
-            'qty' => $request->input('qty')[$key],
-            'price' => $request->input('price')[$key] 
-        ]);
+        $sales = new Sales();
+        $sales->number = Helper::IDGenerator(new Sales(), 'code', 3, 'SC');
+        $sales->date = $params['date'];
+        $sales->user_id = Auth::user()->id;
+        $sales->save();
+
+        $salesDetails = [];
+
+        foreach ($params['id'] as $key => $inventoryId) {
+            $salesDetails[] = [
+                'sales_id' => $sales->id,
+                'inventory_id' => $inventoryId,
+                'qty' => $params['qty'][$key],
+                'price' => $params['price'][$key],
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        SalesDetails::insert($salesDetails);
+
+        foreach ($request->id as $key => $id) {
+        $inventoryId = $id;
+        $qty = $request->qty[$key];
+
+        $inventory = Inventories::find($inventoryId);
+
+        if ($inventory) {
+            $newStock = $inventory->stock - $qty;
+            $newStock = ($newStock < 0) ? 0 : $newStock;
+
+            $inventory->stock = $newStock;
+            $inventory->save();
+        }
     }
-        return redirect('/sales')->with('toast_success', 'Data Inventori berhasil ditambahkan!');
+
+        return response()->json(['message' => 'Data Sales berhasil disimpan']);
     
-}
+    }
     
 
     /**
@@ -89,18 +103,22 @@ class SalesController extends Controller
      */
     public function show($id)
     {
-        $sales=Sales::findOrFail($id);
-        $sales_detail=SalesDetails::where('sales_id',$id)->get();
-        if($sales_detail){
+        $sales=Sales::find($id);
+        $sales_details=SalesDetails::where('sales_id',$id)->get();
+        if($sales_details){
+            $total = 0;
             $totalPrice = 0;
-            foreach ($sales_detail as $sales_detail) {
-                $totalPrice += $sales_detail->price * $sales_detail->qty;
+            foreach ($sales_details as $sales_detail) {
+                $total += $sales_detail->price * $sales_detail->qty;
+                $totalPrice+=$total;
+
             }
         }
-        return view('sales.show',[
-        'sales'=>$sales,
-        'total'=>$totalPrice
-    ]);
+         return response()->json([
+            'totalPrice'=>$totalPrice,
+            'sales'=>$sales,
+            'sales_details' => $sales_details
+         ]);
     }
 
 
@@ -112,21 +130,15 @@ class SalesController extends Controller
      */
     public function edit($id)
     {
-        // $number=Helper::IDGenerator(new Sales, 'code', 3, 'KJ');
-        $barang=Inventories::all();
-        $sales=Sales::findOrFail($id);
-        $sales_detail=SalesDetails::where('sales_id',$id)->get();
-        if($sales_detail){
-            $totalPrice = 0;
-            foreach ($sales_detail as $sales_detail) {
-                $totalPrice += $sales_detail->price * $sales_detail->qty;
-            }
-        }
-        return view('sales.edit',[
+        $sales=Sales::find($id);
+        $sales_details=SalesDetails::where('sales_id',$id)->get();
+        $inventory=Inventories::all();
+         return response()->json([
             'sales'=>$sales,
-            'total'=>$totalPrice,
-            'barang'=>$barang
-        ]);
+            'sales_details' => $sales_details,
+            'inventory' => $inventory,
+            'status'=>'success'
+         ]);
     }
 
     /**
@@ -139,30 +151,58 @@ class SalesController extends Controller
     public function update(Request $request, $id)
     {
         
-    $userID = Auth::user()->id;
+        $params = $request->all();
+        $sales = Sales::findOrFail($id);
 
-    // Temukan penjualan yang akan diupdate
-    $sale = Sales::findOrFail($id);
-    $sale->number = $request->input('number');
-    $sale->date = $request->input('date');
-    $sale->user_id = $userID;
-    $sale->save();
+        if (!$sales) {
+            return response()->json(['message' => 'Sales tidak ditemukan'], 404);
+        }
 
-    // Hapus detail penjualan yang ada terlebih dahulu
-    $sale->salesDetails()->delete();
+        $sales->number = $params['number'];
+        $sales->date = $params['date'];
+        $sales->update();
+        $sales_details=SalesDetails::where('sales_id', $id)->get();
+        foreach ($sales_details as $detail) {
+            $detail->delete();
+        }
 
-    // Loop melalui setiap detail penjualan yang diberikan dan tambahkan yang baru
-    foreach ($request->input('id') as $key => $id) {
-        SalesDetails::create([
-            'sales_id' => $sale->id,
-            'inventory_id' => $id,
-            'qty' => $request->input('qty')[$key],
-            'price' => $request->input('price')[$key]
-        ]);
+        $salesDetails = [];
+
+        foreach ($params['id'] as $key => $inventoryId) {
+            $salesDetails[] = [
+                'sales_id' => $id,
+                'inventory_id' => $inventoryId,
+                'qty' => $params['qty'][$key],
+                'price' => $params['price'][$key],
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+
+        SalesDetails::insert($salesDetails);
+
+        // Perbarui stok barang
+        foreach ($request->id as $key => $id) {
+        $inventoryId = $id;
+        $newQty = $request->qty[$key];
+
+        $salesDetail = SalesDetails::where('sales_id', $id)->first();
+
+        if ($salesDetail) {
+            $oldQty = $salesDetail->qty;
+            $qtyDiff = $newQty - $oldQty;
+            $inventory = Inventories::find($inventoryId);
+
+            if ($inventory) {
+                $newStock = $inventory->stock - $qtyDiff;
+                $newStock = ($newStock < 0) ? 0 : $newStock;
+
+                $inventory->stock = $newStock;
+                $inventory->update();
+            }
+        }
     }
-    return redirect('/sales')->with('toast_success', 'Data Inventori berhasil diubah!');
-    // return response()->json($sale);
-
+        return response()->json(['message' => 'Data Sales berhasil diperbarui']);
     
     }
 
@@ -174,12 +214,26 @@ class SalesController extends Controller
      */
     public function destroy($id)
     {
-        $sales_details=SalesDetails::where('sales_id',$id)->get();
-        foreach ($sales_details as $detail) {
+        $sales = Sales::find($id);
+
+        if (!$sales) {
+            return redirect('/sales')->with('error', 'Pembelian tidak ditemukan!');
+        }
+
+        $salesDetails = SalesDetails::where('sales_id', $id)->get();
+
+        foreach ($salesDetails as $detail) {
+            $inventory = Inventories::find($detail->inventory_id);
+            if ($inventory) {
+                $inventory->stock += $detail->qty;
+                $inventory->save();
+            }
+
             $detail->delete();
         }
-        $sales=Sales::findOrFail($id);
+
         $sales->delete();
-        return redirect('/sales')->with('success','Data Sales berhasil dihapus!');
+
+            return response()->json(['message' => 'Pembelian dan item pembelian berhasil dihapus']);
     }
 }

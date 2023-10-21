@@ -31,7 +31,7 @@
                     </th>
                     </tr>
             </thead>
-            <tbody id="table-content">
+            <tbody id="table-content-edit">
                 
             </tbody>
             </table>

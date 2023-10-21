@@ -13,13 +13,13 @@
                     @if ($user = Auth::user())
                         @if ($user->role == 'superadmin')
                             <li class="nav-item">
-                                <a class="nav-link active" aria-current="page" href="/inventory">Inventori</a>
+                                <a class="nav-link {{ Request::is('inventory') ? "active" : "" }}" aria-current="page" href="/inventory">Inventori</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="/sales">Sales</a>
+                                <a class="nav-link {{ Request::is('sales') ? "active" : "" }}" href="/sales">Sales</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="/purchase">Purchase</a>
+                                <a class="nav-link {{ Request::is('purchase') ? "active" : "" }}" href="/purchase">Purchase</a>
                             </li>
                         @endif
 
@@ -37,10 +37,10 @@
 
                         @if ($user->role == 'manager')
                             <li class="nav-item">
-                                <a class="nav-link active" href="/sales">Sales</a>
+                                <a class="nav-link {{ Request::is('sales') ? "active" : "" }}" href="/sales">Sales</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link active" href="/purchase">Purchase</a>
+                                <a class="nav-link {{ Request::is('purchase') ? "active" : "" }}" href="/purchase">Purchase</a>
                             </li>
                         @endif
 

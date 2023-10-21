@@ -104,9 +104,6 @@
                         $(".btn-close").click();
                         read();
                     });
-
-                    // $(".btn-close").click();
-                    // read()
                 }
             });
         }

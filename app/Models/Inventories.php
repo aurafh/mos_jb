@@ -23,6 +23,6 @@ class Inventories extends Model
 
     public function purchaseDetails()
     {
-        return $this->hasMany(purc::class);
+        return $this->hasMany(PurchaseDetails::class, 'id');
     }
 }

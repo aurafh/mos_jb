@@ -18,11 +18,11 @@ class PurchaseDetails extends Model
 
     public function purchase()
     {
-        return $this->belongsTo(Purchases::class);
+        return $this->belongsTo(Purchases::class, 'purchase_id');
     }
     
     public function inventory()
     {
-        return $this->belongsTo(Inventories::class);
+        return $this->belongsTo(Inventories::class, 'inventory_id');
     }
 }

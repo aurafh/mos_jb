@@ -8,6 +8,8 @@
                     <div class="card-title py-2">
                         <h5>Data Purchase</h5>
                     </div>
+                    @if ($user = Auth::user())
+                        @if ($user->role == 'superadmin' || $user->role == 'sales')
                     <div class="card-description">
                         <div class="row">
                             <div class="col">
@@ -15,6 +17,8 @@
                             </div>
                         </div>
                     </div>
+                    @endif
+                    @endif
                     <div class="table-responssive" id="readData">
                         {{-- Table Data Sales --}}
                     </div>
@@ -41,6 +45,7 @@
             </div>
         </div>
     </div>
+
 @endsection
 @section('script')
     <script>
@@ -62,25 +67,117 @@
         }
 
         function showDetails(id) {
-            $.get("{{ url('/sales') }}/" + id, {}, function(data, status) {
-                $("#ModalLabel").html("Detail Data Purchase")
-                $("#page").html(data);
-                $("#createModal").modal('show');
+            $.ajax({
+            url: 'purchase/'+ id,
+            type: 'GET',
+            dataType: 'JSON',
+            success: function(data, textStatus, jqXHR) {
+            var purchase = data.purchase;
+            var purchaseDetails = data.purchase_details;
 
+            $("#number").val(purchase.number);
+            $("#date").val(purchase.date);
+            $('#totalPrice').val(data.totalPrice);
+            $("#addTH").remove();
+            $("#saveBtn").remove();
+
+
+            $("#table-content").empty();
+
+            purchaseDetails.forEach(function(purchaseDetail, index) {
+                var cols = '<tr>';
+                cols += '<td id="inventoryName_' + index + '"></td>';
+                cols += '<td id="inventoryStock_' + index + '"></td>';
+                cols += '<td>' + purchaseDetail.price + '</td>';
+                cols += '<td>' + purchaseDetail.qty + '</td>';
+                cols += '<td>' + (purchaseDetail.price*purchaseDetail.qty) + '</td>';
+                cols += '</tr>';
+
+                $("#table-content").append(cols);
+
+                $.ajax({
+                url: '/get-inventoryName/' + purchaseDetail.inventory_id,
+                type: 'GET',
+                dataType: 'JSON',
+                success: function(data) {
+                    $("#inventoryName_" + index).text(data.name);
+                    $("#inventoryStock_" + index).text(data.stock);
+                },
+                });
             });
-        }
+
+            $("#ModalLabel").html("Detail Data Purchase");
+            $("#createModal").modal('show');
+        },
+            
+            error: function(jqXHR, textStatus, errorThrown) {
+            }
+
+    })
+}; 
+        
 
         //proses show edit
         function show(id) {
-            $.get("{{ url('/sales') }}/" + id + "/edit", {}, function(data, status) {
-                $("#ModalLabel").html("Edit Data Purchase")
-                $("#page").html(data);
-                $("#createModal").modal('show');
+        $.ajax({
+            url: 'purchase/'+ id+'/edit',
+            type: 'GET',
+            dataType: 'JSON',
+            success: function(data, textStatus, jqXHR) {
+            var purchase = data.purchase;
+            var purchaseDetails = data.purchase_details;
+            var inventory = data.inventory;
+
+            $('#id_purchase').val(purchase.id);
+            $('#number').val(purchase.number);
+            $('#date').val(purchase.date);
+            $("#table-content").empty();
+
+            purchaseDetails.forEach(function(purchaseDetail, index) {
+                var cols = '<tr>';
+                cols += '<td><select class="form-control" id="inventory_id_' + index + '" data-index="' + index + '" name="id[]" style="width: 100%">';
+                cols += '<option value="0">Pilih Barang</option>';
+
+                inventory.forEach(function(item) {
+                var selected = item.id === purchaseDetail.inventory_id ? 'selected' : '';
+                var dataStock = item.id === purchaseDetail.inventory_id ? 'data-stock="' + item.stock + '"' : 'data-stock="0"';
+                cols += '<option value="' + item.id + '" ' + selected + ' ' + dataStock + '>' + item.name + '</option>';
+                });
+                cols += '</select></td>';
+                cols += '<td><input type="number" class="form-control" id="stock_value_' + index + '" value="0" readonly disabled></td>';
+                cols += '<td><input type="number" class="form-control" id="price_value_' + index + '" name="price[]" value="' + purchaseDetail.price + '" placeholder="0" onchange="calculate(this)"></td>';
+                cols += '<td><input type="number" class="form-control" id="qty_value_' + index + '" name="qty[]" value="' + purchaseDetail.qty + '" placeholder="0" onchange="calculate(this)"></td>';
+                cols += '<td><input type="number" class="form-control total" id="total_value_' + index + '" name="total[]" value="' + (purchaseDetail.price*purchaseDetail.qty) + '" readonly disabled></td>';
+                cols += '<td><button type="button" class="btn btn-danger" id="delete-row">DELETE</button></td>';
+                cols += '</tr>';
+
+                $("#table-content").append(cols);
+
+                $('#inventory_id_' + index).select2({
+                    dropdownParent: $('#createModal')
+                }).on('change', function() {
+                    var selectedOption = $('option:selected', this);
+                    var stock = selectedOption.data('stock');
+                    var rowValue = $(this).data("index");
+                    $('#stock_value_' + rowValue).val(stock);
+                });
+
+                rowCount = index + 1; // Update rowCount
             });
-        }
+
+            $("#ModalLabel").html("Edit Data Purchase");
+            $("#createModal").modal('show');
+        },
+            
+            error: function(jqXHR, textStatus, errorThrown) {
+            }
+
+            })
+        }; 
+        
 
         //proses delete data
-        function deleteSales(itemID) {
+        function deletePurchase(itemID) {
             var itemId = $(this).data('id');
             Swal.fire({
                 title: 'Hapus Data',
@@ -93,7 +190,7 @@
                 if (result.isConfirmed) {
                     $.ajax({
                         type: "POST", // Gunakan metode DELETE
-                        url: "/sales/" + itemID,
+                        url: "/purchase/" + itemID,
                         data: {
                             _token: "{{ csrf_token() }}",
                             _method: "DELETE"
@@ -108,11 +205,9 @@
                 }
             });
         };
-    </script>
 
-    <script type="text/javascript">
-    let rowCount = 0;
 
+    var rowCount = 0;
     $(document).on("click", '#btn-add-row', function() {
         let div = $("<tr>");
         div.html(addRow());
@@ -214,39 +309,75 @@
         $(this).closest("tr").remove();
     });
 
-    $(document).ready(function(){
-            $('#addForm').submit(function (e) {
-            e.preventDefault(); 
 
-            var formData = $(this).serialize();
-
-            $.ajax({
-                type: 'POST',
-                url: '/purchase', 
-                data: formData,
-                dataType: 'json',
-                success: function (response) {
-                    Swal.fire({
-                        title: 'Sukses',
-                        text: 'Data pembelian berhasil disimpan.',
-                        icon: 'success',
-                    }).then(function () {
-                        $(".btn-close").click();
-                        read();
-                    });
-                },
-                error: function (jqXHR, textStatus, errorThrown) {
-                    console.log(jqXHR.responseJSON);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Terjadi kesalahan saat menyimpan data.',
-                    });
-                },
+$(document).ready(function(){
+    $('#addForm').submit(function (e) {
+        e.preventDefault(); 
+        
+        var formData = $(this).serialize();
+        $.ajax({
+        type: 'POST',
+        url: '/purchase',
+        data: formData,
+        dataType: 'json',
+        success: function (response) {
+            Swal.fire({
+                title: 'Sukses',
+                text: 'Data pembelian berhasil disimpan.',
+                icon: 'success',
+            }).then(function () {
+                $(".btn-close").click();
+                read();
             });
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            console.log(jqXHR.responseJSON);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Terjadi kesalahan saat menyimpan data.',
+            });
+        },
         });
+    });
+});
+
+
+
+$(document).ready(function() {
+    $('#updateForm').submit(function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serialize();
+        var purchaseId = $('#id_purchase').val();
+        console.log(purchaseId);
+
+        $.ajax({
+            type: 'PUT',
+            url: "{{ url('/purchase') }}/" + purchaseId,
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                Swal.fire({
+                    title: 'Sukses',
+                    text: 'Data pembelian berhasil diperbarui',
+                    icon: 'success',
+                }).then(function() {
+                    $(".btn-close").click();
+                    read();
+                });
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.log(jqXHR.responseJSON);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Terjadi kesalahan saat memperbarui data.',
+                });
+            },
+        });
+    });
 });
     
 </script>
-
 @endsection
